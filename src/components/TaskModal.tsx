@@ -38,8 +38,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialStatus }: TaskMo
         setStatus(taskToEdit.status);
         setCategory(taskToEdit.category);
         setSprint(taskToEdit.sprint);
-        setStartDate(taskToEdit.startDate || "");
-        setDueDate(taskToEdit.dueDate);
+        setStartDate(taskToEdit.startDate ? taskToEdit.startDate.split('T')[0] : "");
+        setDueDate(taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : "");
         setAssignees(taskToEdit.assignees.join(", "));
         setUrl(taskToEdit.url || "");
         setSubtasks(taskToEdit.subtasks);
@@ -226,23 +226,14 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialStatus }: TaskMo
                     <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">Due Date</label>
                     <input
                         type="date"
-                        value={dueDate ? new Date(dueDate).toISOString().split('T')[0] : ''}
+                        value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
                         className="w-full bg-secondary/20 border border-input rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                  </div>
             </div>
 
-            <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">Assignees</label>
-                <input
-                    type="text"
-                    value={assignees}
-                    onChange={(e) => setAssignees(e.target.value)}
-                    placeholder="Name 1, Name 2..."
-                    className="w-full bg-secondary/20 border border-input rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                />
-            </div>
+
 
              <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">External Link</label>

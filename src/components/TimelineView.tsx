@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTaskStore } from "../store/useTaskStore";
-import { format, parseISO, subDays, differenceInDays, startOfDay } from "date-fns";
+import { format, parseISO, subDays, differenceInCalendarDays, startOfDay } from "date-fns";
 import type { Task } from "../types";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -85,38 +85,25 @@ export const TimelineView = ({ onTaskClick }: { onTaskClick?: (task: Task) => vo
         setViewStartDate(new Date(today.getFullYear(), today.getMonth(), 1));
     };
 
-    // Calculate bar position and width for a task
-    const getBarStyle = (task: typeof tasksWithDates[0]) => {
-        const taskStart = startOfDay(task.startDateObj);
-        const taskEnd = startOfDay(task.dueDateObj);
-        const rangeStart = startOfDay(viewStartDate);
-        
-        // Calculate position relative to the visible 30-day range
-        const daysFromRangeStart = differenceInDays(taskStart, rangeStart);
-        const taskDuration = differenceInDays(taskEnd, taskStart) + 1;
-        
-        // Clamp to visible range
-        const visibleStart = Math.max(0, daysFromRangeStart);
-        const visibleEnd = Math.min(30, daysFromRangeStart + taskDuration);
-        
-        // If task is completely outside visible range, don't show it
-        if (visibleEnd <= 0 || visibleStart >= 30) {
-            return {
-                display: 'none'
-            };
-        }
-        
-        // Calculate percentage positions
-        const leftPercent = (visibleStart / 30) * 100;
-        const widthPercent = ((visibleEnd - visibleStart) / 30) * 100;
-        
-        return {
-            left: `${leftPercent}%`,
-            width: `${widthPercent}%`,
-            backgroundColor: STATUS_COLORS[task.status],
-            borderColor: CATEGORY_COLORS[task.category]
-        };
+    const handleMonthChange = (month: number) => {
+        const newDate = new Date(viewStartDate);
+        newDate.setMonth(month);
+        setViewStartDate(newDate);
     };
+
+    const handleYearChange = (year: number) => {
+        const newDate = new Date(viewStartDate);
+        newDate.setFullYear(year);
+        setViewStartDate(newDate);
+    };
+
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
     return (
         <div className="h-full flex flex-col p-6 overflow-hidden bg-background">
@@ -136,21 +123,41 @@ export const TimelineView = ({ onTaskClick }: { onTaskClick?: (task: Task) => vo
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <button
-                            onClick={handleToday}
-                            className="px-3 py-2 text-sm font-medium hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Today
-                        </button>
+                        
+                        <div className="flex items-center gap-1">
+                            <select
+                                value={viewStartDate.getMonth()}
+                                onChange={(e) => handleMonthChange(parseInt(e.target.value))}
+                                className="bg-transparent font-semibold cursor-pointer hover:text-primary outline-none text-sm"
+                            >
+                                {months.map((month, i) => (
+                                    <option key={month} value={i} className="bg-background">{month}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={viewStartDate.getFullYear()}
+                                onChange={(e) => handleYearChange(parseInt(e.target.value))}
+                                className="bg-transparent font-semibold cursor-pointer hover:text-primary outline-none text-sm"
+                            >
+                                {years.map(year => (
+                                    <option key={year} value={year} className="bg-background">{year}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <button
                             onClick={handleNextMonth}
                             className="p-2 hover:bg-muted rounded-lg transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-                        <span className="text-sm font-semibold ml-2">
-                            {format(viewStartDate, 'MMMM yyyy')}
-                        </span>
+                        
+                        <button
+                            onClick={handleToday}
+                            className="px-3 py-2 text-sm font-medium hover:bg-muted rounded-lg transition-colors ml-2"
+                        >
+                            Today
+                        </button>
                     </div>
 
                     {/* Sprint Filter */}
@@ -192,68 +199,107 @@ export const TimelineView = ({ onTaskClick }: { onTaskClick?: (task: Task) => vo
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 bg-card rounded-xl border border-border overflow-hidden flex flex-col">
-                    {/* Timeline Header */}
-                    <div className="flex border-b border-border bg-muted/30">
-                        <div className="w-64 flex-shrink-0 p-3 border-r border-border font-semibold text-sm">
-                            Task
-                        </div>
-                        <div className="flex-1 flex">
-                            {dayColumns.map((day, i) => (
-                                <div
-                                    key={i}
-                                    className="flex-1 p-2 text-center border-r border-border last:border-r-0"
-                                >
-                                    <div className="text-xs font-semibold">{format(day, 'EEE')}</div>
-                                    <div className="text-xs text-muted-foreground">{format(day, 'd')}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Timeline Body */}
-                    <div className="flex-1 overflow-y-auto">
-                        {tasksWithDates.map(task => (
-                            <div key={task.id} className="flex border-b border-border hover:bg-muted/30 transition-colors">
-                                {/* Task Info */}
-                                <div className="w-64 flex-shrink-0 p-3 border-r border-border">
-                                    <button
-                                        onClick={() => onTaskClick?.(task)}
-                                        className="text-left w-full group"
-                                    >
-                                        <div className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                                            {task.title}
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span
-                                                className="text-xs px-1.5 py-0.5 rounded"
-                                                style={{
-                                                    backgroundColor: `${CATEGORY_COLORS[task.category]}20`,
-                                                    color: CATEGORY_COLORS[task.category]
-                                                }}
-                                            >
-                                                {task.category}
-                                            </span>
-                                            {task.sprint && (
-                                                <span className="text-xs text-muted-foreground">
-                                                    {task.sprint}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </button>
-                                </div>
-
-                                {/* Timeline Bar */}
-                                <div className="flex-1 relative p-3">
-                                    <div
-                                        className="absolute top-1/2 -translate-y-1/2 h-6 rounded border-2 cursor-pointer hover:opacity-80 transition-opacity"
-                                        style={getBarStyle(task)}
-                                        onClick={() => onTaskClick?.(task)}
-                                        title={`${task.title}\n${format(task.startDateObj, 'MMM d')} - ${format(task.dueDateObj, 'MMM d')}`}
-                                    />
-                                </div>
+                <div className="flex-1 bg-card rounded-xl border border-border overflow-auto relative">
+                    <div className="min-w-max">
+                        {/* Timeline Header */}
+                        <div className="flex sticky top-0 z-30 bg-muted/90 backdrop-blur-sm border-b border-border">
+                            <div className="w-64 flex-shrink-0 p-4 sticky left-0 z-40 bg-card border-r border-border font-bold text-sm shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                Task
                             </div>
-                        ))}
+                            <div className="flex">
+                                {dayColumns.map((day, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-20 flex-shrink-0 p-2 text-center border-r border-border last:border-r-0"
+                                    >
+                                        <div className="text-[10px] font-bold uppercase tracking-tighter">{format(day, 'EEE')}</div>
+                                        <div className="text-xs font-semibold text-muted-foreground">{format(day, 'd')}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Timeline Rows */}
+                        <div className="divide-y divide-border">
+                            {tasksWithDates.map(task => {
+                                const taskStart = startOfDay(task.startDateObj);
+                                const taskEnd = startOfDay(task.dueDateObj);
+                                const rangeStart = startOfDay(viewStartDate);
+                                
+                                // Calculate which columns the bar spans
+                                const daysFromStart = differenceInCalendarDays(taskStart, rangeStart);
+                                const duration = differenceInCalendarDays(taskEnd, taskStart) + 1;
+                                
+                                // Skip if completely outside range
+                                if (daysFromStart + duration <= 0 || daysFromStart >= 30) return null;
+                                
+                                // Clamp to visible range for the bar display
+                                const startCol = Math.max(0, daysFromStart);
+                                const endCol = Math.min(30, daysFromStart + duration);
+                                
+                                return (
+                                    <div key={task.id} className="flex hover:bg-muted/30 transition-colors group">
+                                        {/* Sticky Task Info */}
+                                        <div className="w-64 flex-shrink-0 p-4 sticky left-0 z-20 bg-card border-r border-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                            <button
+                                                onClick={() => onTaskClick?.(task)}
+                                                className="text-left w-full"
+                                            >
+                                                <div className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                                                    {task.title}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <span
+                                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider"
+                                                        style={{
+                                                            backgroundColor: `${CATEGORY_COLORS[task.category]}15`,
+                                                            color: CATEGORY_COLORS[task.category]
+                                                        }}
+                                                    >
+                                                        {task.category}
+                                                    </span>
+                                                    {task.sprint && (
+                                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                                            {task.sprint}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        </div>
+
+                                        {/* Timeline Grid & Bar */}
+                                        <div className="flex relative h-16">
+                                            {/* Grid Lines */}
+                                            <div className="absolute inset-0 flex pointer-events-none">
+                                                {dayColumns.map((_, i) => (
+                                                    <div key={i} className="w-20 flex-shrink-0 border-r border-border/20 last:border-r-0" />
+                                                ))}
+                                            </div>
+                                            
+                                            {/* Task Bar */}
+                                            <div
+                                                className="absolute top-1/2 -translate-y-1/2 h-8 rounded-lg border-2 shadow-sm cursor-pointer hover:scale-[1.02] hover:brightness-110 transition-all duration-200"
+                                                style={{
+                                                    left: `${startCol * 80}px`,
+                                                    width: `${(endCol - startCol) * 80}px`,
+                                                    backgroundColor: STATUS_COLORS[task.status],
+                                                    borderColor: CATEGORY_COLORS[task.category],
+                                                    zIndex: 10
+                                                }}
+                                                onClick={() => onTaskClick?.(task)}
+                                                title={`${task.title}\n${format(task.startDateObj, 'MMM d')} - ${format(task.dueDateObj, 'MMM d')}`}
+                                            >
+                                                <div className="h-full w-full flex items-center px-3 overflow-hidden">
+                                                    <span className="text-[10px] font-bold text-white whitespace-nowrap drop-shadow-sm">
+                                                        {format(task.startDateObj, 'M/d')} - {format(task.dueDateObj, 'M/d')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             )}

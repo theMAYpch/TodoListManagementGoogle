@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KanbanBoard } from "./components/KanbanBoard";
 import { ImportDialog } from "./components/ImportDialog";
 import { TaskModal } from "./components/TaskModal";
@@ -8,7 +8,7 @@ import { UpcomingEventsWidget } from "./components/UpcomingEventsWidget";
 import { TimelineView } from "./components/TimelineView";
 import { useTaskStore } from "./store/useTaskStore";
 import { generatePrompt } from "./utils/export";
-import { Copy, Check, Layout, ListTodo, Calendar } from "lucide-react";
+import { Copy, Check, Layout, ListTodo, Calendar, Sun, Moon } from "lucide-react";
 import type { Task, TaskStatus } from "./types";
 import { cn } from "./utils/cn";
 
@@ -90,6 +90,23 @@ function App() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [initialStatus, setInitialStatus] = useState<TaskStatus | undefined>(undefined);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage or system preference
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Apply theme to document
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const handleEditTask = (task: Task) => {
       setEditingTask(task);
@@ -144,6 +161,15 @@ function App() {
         </nav>
 
         <div className="flex items-center gap-3">
+             {/* Theme Toggle */}
+             <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+             >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+             </button>
+             
              <button 
                 onClick={() => setIsImportOpen(true)}
                 className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

@@ -46,6 +46,9 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      gridTemplateColumns: {
+        '30': 'repeat(30, minmax(0, 1fr))',
+      },
     },
   },
   plugins: [],
