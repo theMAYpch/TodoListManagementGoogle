@@ -1,12 +1,17 @@
-import { useState, useRef } from "react";
-import { X, Upload, FileText, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Upload as UploadIcon, FileText } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { Modal, Input, Button, Upload, Spin } from "antd";
 import * as pdfjsLib from "pdfjs-dist";
 import { parseImportText } from "../utils/parser";
 import { useTaskStore } from "../store/useTaskStore";
-import { cn } from "../utils/cn";
+import type { UploadFile } from "antd/es/upload/interface";
 
 // Initialize PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const { Dragger } = Upload;
+const { TextArea } = Input;
 
 type ImportDialogProps = {
   isOpen: boolean;
@@ -16,18 +21,12 @@ type ImportDialogProps = {
 export const ImportDialog = ({ isOpen, onClose }: ImportDialogProps) => {
   const [inputText, setInputText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { importTasks } = useTaskStore();
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const { importTasks, epics } = useTaskStore();
 
-  if (!isOpen) return null;
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setFileName(file.name);
+  const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
+    setFileList([{ uid: '-1', name: file.name, status: 'uploading' }]);
 
     try {
       if (file.type === "application/pdf") {
@@ -48,97 +47,98 @@ export const ImportDialog = ({ isOpen, onClose }: ImportDialogProps) => {
         const text = await file.text();
         setInputText(text);
       }
+      setFileList([{ uid: '-1', name: file.name, status: 'done' }]);
+      toast.success("File parsed successfully");
     } catch (error) {
       console.error("Error reading file:", error);
-      alert("Failed to parse file. Please try pasting the text manually.");
+      toast.error("Failed to parse file. Please try pasting text manually.");
+      setFileList([{ uid: '-1', name: file.name, status: 'error' }]);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleImport = () => {
-    const tasks = parseImportText(inputText);
+    const result = parseImportText(inputText, epics);
+    // Support both old return (array) and new return (object) just in case, though we changed parser.
+    // In TS, parser returns object now.
+    const tasks = Array.isArray(result) ? result : result.tasks;
+    const newEpics = Array.isArray(result) ? [] : result.newEpics;
+
     if (tasks.length > 0) {
-      importTasks(tasks);
-      onClose();
+      importTasks(tasks, newEpics);
+      toast.success(`Imported ${tasks.length} tasks and ${newEpics.length} new epics!`);
+      // Reset state
       setInputText("");
-      setFileName(null);
+      setFileList([]);
+      onClose();
     } else {
-      alert("No tasks found. Ensure format matches:\n- Sprint XX\n- Task item...");
+      toast.error("No valid tasks found. Check format.");
     }
   };
 
+  const draggerProps = {
+    name: 'file',
+    multiple: false,
+    fileList: fileList,
+    onRemove: () => {
+        setFileList([]);
+        setInputText("");
+    },
+    beforeUpload: (file: File) => {
+        handleFileUpload(file);
+        return false; // Prevent auto upload
+    },
+    showUploadList: true,
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-card w-full max-w-2xl rounded-xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-bold">Import Tasks</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Modal
+        open={isOpen}
+        onCancel={onClose}
+        title="Import Tasks"
+        width={700}
+        footer={[
+            <Button key="cancel" onClick={onClose}>
+                Cancel
+            </Button>,
+            <Button 
+                key="import" 
+                type="primary" 
+                onClick={handleImport}
+                disabled={!inputText.trim() || isProcessing}
+                loading={isProcessing}
+            >
+                Import Tasks
+            </Button>
+        ]}
+    >
+        <div className="space-y-6 pt-4">
+            <Dragger {...draggerProps} disabled={isProcessing} style={{ padding: '20px' }}>
+                <p className="ant-upload-drag-icon">
+                    {isProcessing ? <Spin /> : <UploadIcon className="w-10 h-10 text-primary mx-auto" />}
+                </p>
+                <p className="ant-upload-text">Click or drag file to this area to upload</p>
+                <p className="ant-upload-hint">
+                    Support for .txt and .pdf files. Content will be parsed into tasks.
+                </p>
+            </Dragger>
 
-        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-          <div className="space-y-4">
-             <div 
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                    "border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors hover:bg-muted/50 hover:border-primary/50",
-                    isProcessing && "opacity-50 pointer-events-none"
-                )}
-             >
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept=".txt,.pdf"
-                    onChange={handleFileUpload}
-                />
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                    {isProcessing ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <Upload className="w-8 h-8 text-primary" />}
-                </div>
-                {fileName ? (
-                    <p className="font-medium text-foreground">{fileName}</p>
-                ) : (
-                    <div className="text-center space-y-1">
-                        <p className="font-medium text-foreground">Click to upload PDF or Text file</p>
-                        <p className="text-sm text-muted-foreground">or manually paste content below</p>
-                    </div>
-                )}
-             </div>
-
-             <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground flwx items-center gap-2">
-                    <FileText className="w-4 h-4 inline" />
+            <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <FileText className="w-4 h-4" />
                     Review Content
-                </label>
-                <textarea
+                </div>
+                <TextArea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Sprint 66&#10;- Implement Login&#10;- Fix header bug..."
-                    className="w-full h-64 bg-secondary/30 border border-input rounded-lg p-4 font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                    rows={10}
                     disabled={isProcessing}
+                    className="font-mono text-sm"
                 />
-             </div>
-          </div>
+            </div>
         </div>
-
-        <div className="p-6 border-t border-border flex justify-end gap-3 bg-muted/20 rounded-b-xl">
-            <button 
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
-            >
-                Cancel
-            </button>
-            <button 
-                onClick={handleImport}
-                disabled={!inputText.trim() || isProcessing}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Import Tasks
-            </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };

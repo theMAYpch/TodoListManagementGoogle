@@ -1,8 +1,11 @@
 import { useState, useMemo } from "react";
-import { Search, Save, X, Filter, Check as CheckIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Save, X, Filter as FilterIcon, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Input, Button, Tag, Dropdown, Space, Badge, theme, Popover, Empty } from "antd";
 import { useTaskStore } from "../store/useTaskStore";
 import type { TaskCategory, TaskStatus, SavedFilter } from "../types";
-import { cn } from "../utils/cn";
+import type { MenuProps } from 'antd';
+
+const { CheckableTag } = Tag;
 
 const CATEGORIES: TaskCategory[] = ["Feature", "Bug", "Doc", "Meeting", "Other"];
 const STATUSES: { id: TaskStatus; label: string }[] = [
@@ -27,7 +30,7 @@ export const FilterBar = () => {
     const [isSaveOpen, setIsSaveOpen] = useState(false);
     const [filterName, setFilterName] = useState("");
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+    const { token } = theme.useToken();
 
     // Derive unique sprints and assignees from tasks
     const availableSprints = useMemo(() => 
@@ -54,38 +57,37 @@ export const FilterBar = () => {
     const loadFilter = (filter: SavedFilter) => {
         setActiveFilter(filter.criteria);
         setSearchQuery(filter.criteria.search || "");
-        setShowSavedDropdown(false);
     };
 
-    const toggleCategory = (cat: TaskCategory) => {
+    const toggleCategory = (cat: TaskCategory, checked: boolean) => {
         const current = activeFilter.categories || [];
-        const newCats = current.includes(cat) 
-            ? current.filter(c => c !== cat) 
-            : [...current, cat];
+        const newCats = checked
+            ? [...current, cat]
+            : current.filter(c => c !== cat);
         setActiveFilter({ ...activeFilter, categories: newCats.length ? newCats : undefined });
     };
 
-    const toggleStatus = (status: TaskStatus) => {
+    const toggleStatus = (status: TaskStatus, checked: boolean) => {
         const current = activeFilter.statuses || [];
-        const newStatuses = current.includes(status)
-            ? current.filter(s => s !== status)
-            : [...current, status];
+        const newStatuses = checked
+            ? [...current, status]
+            : current.filter(s => s !== status);
         setActiveFilter({ ...activeFilter, statuses: newStatuses.length ? newStatuses : undefined });
     };
 
-    const toggleSprint = (sprint: string) => {
+    const toggleSprint = (sprint: string, checked: boolean) => {
         const current = activeFilter.sprints || [];
-        const newSprints = current.includes(sprint)
-            ? current.filter(s => s !== sprint)
-            : [...current, sprint];
+        const newSprints = checked
+            ? [...current, sprint]
+            : current.filter(s => s !== sprint);
         setActiveFilter({ ...activeFilter, sprints: newSprints.length ? newSprints : undefined });
     };
 
-    const toggleAssignee = (assignee: string) => {
+    const toggleAssignee = (assignee: string, checked: boolean) => {
         const current = activeFilter.assignees || [];
-        const newAssignees = current.includes(assignee)
-            ? current.filter(a => a !== assignee)
-            : [...current, assignee];
+        const newAssignees = checked
+            ? [...current, assignee]
+            : current.filter(a => a !== assignee);
         setActiveFilter({ ...activeFilter, assignees: newAssignees.length ? newAssignees : undefined });
     };
 
@@ -100,110 +102,90 @@ export const FilterBar = () => {
                               (activeFilter.sprints?.length || 0) + 
                               (activeFilter.assignees?.length || 0);
 
+    const savedFiltersMenu: MenuProps['items'] = savedFilters.length > 0 ? savedFilters.map(f => ({
+        key: f.id,
+        label: (
+            <div className="flex justify-between items-center w-full min-w-[150px] group">
+                <span onClick={() => loadFilter(f)} className="flex-1 cursor-pointer">{f.name}</span>
+                <Button 
+                    type="text" 
+                    size="small" 
+                    danger 
+                    icon={<Trash2 className="w-3 h-3" />} 
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); deleteSavedFilter(f.id); }}
+                />
+            </div>
+        )
+    })) : [{ key: 'empty', label: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No saved filters" /> }];
+
+    const saveContent = (
+        <Space direction="vertical" className="w-60">
+            <Input 
+                placeholder="Filter Name" 
+                value={filterName} 
+                onChange={e => setFilterName(e.target.value)} 
+                onPressEnter={handleSaveFilter}
+            />
+            <Button type="primary" block onClick={handleSaveFilter} disabled={!filterName.trim()}>Save current filter</Button>
+            <div className="max-h-48 overflow-y-auto">
+                 {/* Reusing saved filters display mainly for the visual list within popover if needed, but Dropdown handles selection better. Keeping save simple. */}
+            </div>
+        </Space>
+    );
+
     return (
-        <div className="bg-card border-b border-border p-4 flex flex-col gap-3 sticky top-0 z-30 shadow-sm">
+        <div className="bg-card border-b border-border p-4 flex flex-col gap-3 sticky top-0 z-30 shadow-sm" style={{ background: token.colorBgContainer }}>
             
             {/* Top Row: Search and Actions */}
             <div className="flex items-center gap-2">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                        type="text"
+                    <Input
+                        prefix={<Search className="w-4 h-4 text-muted-foreground mr-1" />}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search tasks..."
-                        className="w-full bg-secondary/30 border border-input rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        allowClear
                     />
                 </div>
 
-                {/* Filter Toggle Button */}
-                <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className={cn(
-                        "flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-medium transition-colors",
-                        activeFilterCount > 0
-                            ? "bg-primary/10 border-primary text-primary"
-                            : "bg-secondary/30 border-input hover:bg-secondary/50"
-                    )}
-                >
-                    <Filter className="w-4 h-4" />
-                    Filters
-                    {activeFilterCount > 0 && (
-                        <span className="bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 text-xs font-bold">
-                            {activeFilterCount}
-                        </span>
-                    )}
-                    {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </button>
+                <Badge count={activeFilterCount} color={token.colorPrimary}>
+                    <Button 
+                        icon={<FilterIcon className="w-4 h-4" />} 
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        type={showAdvanced ? "primary" : "default"}
+                        ghost={showAdvanced}
+                    >
+                        Filters {showAdvanced ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+                    </Button>
+                </Badge>
                 
                 {hasActiveFilters && (
-                    <button 
+                    <Button 
+                        type="text" 
+                        icon={<X className="w-4 h-4" />} 
                         onClick={clearFilters}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         title="Clear All Filters"
                     >
-                        <X className="w-4 h-4" />
-                    </button>
+                        Clear
+                    </Button>
                 )}
 
-                {/* Save/Load Filters */}
-                <div className="relative ml-auto">
-                   <button 
-                        onClick={() => setShowSavedDropdown(!showSavedDropdown)}
-                        className="flex items-center gap-2 px-3 py-2 bg-secondary/30 border border-input rounded-lg text-sm font-medium hover:bg-secondary/50 transition-colors"
-                   >
-                        <Save className="w-4 h-4" />
-                        Saved
-                   </button>
-                   {showSavedDropdown && (
-                       <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-lg p-1 z-10 animate-in fade-in zoom-in-50 duration-200">
-                            {savedFilters.length === 0 ? (
-                                <p className="p-3 text-xs text-muted-foreground text-center">No saved filters</p>
-                            ) : (
-                                savedFilters.map(f => (
-                                    <div key={f.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-lg group/item">
-                                        <button 
-                                            onClick={() => loadFilter(f)} 
-                                            className="text-sm font-medium text-start flex-1"
-                                        >
-                                            {f.name}
-                                        </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); deleteSavedFilter(f.id); }}
-                                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover/item:opacity-100 p-1"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                            <div className="border-t border-border mt-1 pt-1 p-1">
-                                 {!isSaveOpen ? (
-                                    <button 
-                                        onClick={() => setIsSaveOpen(true)}
-                                        className="w-full flex items-center justify-center gap-2 p-2 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg"
-                                    >
-                                        <Save className="w-3 h-3" /> Save Current
-                                    </button>
-                                 ) : (
-                                    <div className="flex items-center gap-1">
-                                        <input 
-                                            type="text" 
-                                            className="flex-1 bg-secondary border border-input rounded p-1 text-xs" 
-                                            placeholder="Name"
-                                            value={filterName}
-                                            onChange={(e) => setFilterName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveFilter()}
-                                            autoFocus
-                                        />
-                                        <button onClick={handleSaveFilter} className="p-1 bg-primary text-primary-foreground rounded">
-                                            <CheckIcon className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                 )}
-                            </div>
-                       </div>
-                   )}
+                <div className="ml-auto flex gap-2">
+                    <Dropdown menu={{ items: savedFiltersMenu }} trigger={['click']} placement="bottomRight">
+                        <Button icon={<Save className="w-4 h-4" />}>
+                            Saved <ChevronDown className="w-3 h-3 ml-1" />
+                        </Button>
+                    </Dropdown>
+                    <Popover 
+                        content={saveContent} 
+                        title="Save Filter" 
+                        trigger="click" 
+                        open={isSaveOpen} 
+                        onOpenChange={setIsSaveOpen}
+                    >
+                        <Button type="dashed" icon={<Save className="w-4 h-4" />} />
+                    </Popover>
                 </div>
             </div>
 
@@ -211,89 +193,69 @@ export const FilterBar = () => {
             {showAdvanced && (
                 <div className="space-y-3 pt-2 border-t border-border animate-in slide-in-from-top-2 duration-200">
                     
-                    {/* Category */}
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase min-w-[70px]">Category:</span>
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-xs font-semibold uppercase text-muted-foreground w-16">Category:</span>
+                        <div className="flex flex-wrap gap-1">
                             {CATEGORIES.map(cat => (
-                                <button
+                                <CheckableTag
                                     key={cat}
-                                    onClick={() => toggleCategory(cat)}
-                                    className={cn(
-                                        "px-2 py-1 rounded text-xs font-medium transition-colors border",
-                                        activeFilter.categories?.includes(cat)
-                                            ? "bg-primary/10 border-primary text-primary"
-                                            : "bg-transparent border-border text-muted-foreground hover:border-primary/50"
-                                    )}
+                                    checked={!!activeFilter.categories?.includes(cat)}
+                                    onChange={(checked) => toggleCategory(cat, checked)}
+                                    className="border border-transparent data-[checked=false]:border-border"
                                 >
                                     {cat}
-                                </button>
+                                </CheckableTag>
                             ))}
                         </div>
                     </div>
 
-                    {/* Status */}
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase min-w-[70px]">Status:</span>
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-xs font-semibold uppercase text-muted-foreground w-16">Status:</span>
+                        <div className="flex flex-wrap gap-1">
                             {STATUSES.map(st => (
-                                <button
+                                <CheckableTag
                                     key={st.id}
-                                    onClick={() => toggleStatus(st.id)}
-                                    className={cn(
-                                        "px-2 py-1 rounded text-xs font-medium transition-colors border",
-                                        activeFilter.statuses?.includes(st.id)
-                                            ? "bg-primary/10 border-primary text-primary"
-                                            : "bg-transparent border-border text-muted-foreground hover:border-primary/50"
-                                    )}
+                                    checked={!!activeFilter.statuses?.includes(st.id)}
+                                    onChange={(checked) => toggleStatus(st.id, checked)}
+                                    className="border border-transparent data-[checked=false]:border-border"
                                 >
                                     {st.label}
-                                </button>
+                                </CheckableTag>
                             ))}
                         </div>
                     </div>
 
-                    {/* Sprint */}
                     {availableSprints.length > 0 && (
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase min-w-[70px]">Sprint:</span>
-                            <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-xs font-semibold uppercase text-muted-foreground w-16">Sprint:</span>
+                            <div className="flex flex-wrap gap-1">
                                 {availableSprints.map(sprint => (
-                                    <button
+                                    <CheckableTag
                                         key={sprint}
-                                        onClick={() => toggleSprint(sprint)}
-                                        className={cn(
-                                            "px-2 py-1 rounded text-xs font-medium transition-colors border",
-                                            activeFilter.sprints?.includes(sprint)
-                                                ? "bg-primary/10 border-primary text-primary"
-                                                : "bg-transparent border-border text-muted-foreground hover:border-primary/50"
-                                        )}
+                                        checked={!!activeFilter.sprints?.includes(sprint)}
+                                        onChange={(checked) => toggleSprint(sprint, checked)}
+                                        className="border border-transparent data-[checked=false]:border-border"
                                     >
                                         {sprint}
-                                    </button>
+                                    </CheckableTag>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {/* Assignee */}
                     {availableAssignees.length > 0 && (
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase min-w-[70px]">Assignee:</span>
-                            <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-xs font-semibold uppercase text-muted-foreground w-16">Assignee:</span>
+                            <div className="flex flex-wrap gap-1">
                                 {availableAssignees.map(assignee => (
-                                    <button
+                                    <CheckableTag
                                         key={assignee}
-                                        onClick={() => toggleAssignee(assignee)}
-                                        className={cn(
-                                            "px-2 py-1 rounded text-xs font-medium transition-colors border",
-                                            activeFilter.assignees?.includes(assignee)
-                                                ? "bg-primary/10 border-primary text-primary"
-                                                : "bg-transparent border-border text-muted-foreground hover:border-primary/50"
-                                        )}
+                                        checked={!!activeFilter.assignees?.includes(assignee)}
+                                        onChange={(checked) => toggleAssignee(assignee, checked)}
+                                        className="border border-transparent data-[checked=false]:border-border"
                                     >
                                         {assignee}
-                                    </button>
+                                    </CheckableTag>
                                 ))}
                             </div>
                         </div>
@@ -304,4 +266,4 @@ export const FilterBar = () => {
 
         </div>
     );
-}
+};

@@ -1,95 +1,168 @@
-import { useState } from "react";
-import { Trash2, Filter, LayoutDashboard, ChevronRight, ChevronLeft } from "lucide-react";
+import { Menu, Button, Modal, Dropdown } from "antd";
+import { Filter, LayoutDashboard, Layers, Trash2, MoreVertical } from "lucide-react";
 import { useTaskStore } from "../store/useTaskStore";
-import { cn } from "../utils/cn";
-import type { SavedFilter } from "../types";
+import type { MenuProps } from "antd";
+
+// Define menu item type helper
+type MenuItem = Required<MenuProps>['items'][number];
+
+function getItem(
+  label: React.ReactNode,
+  key: React.Key,
+  icon?: React.ReactNode,
+  children?: MenuItem[],
+  type?: 'group',
+): MenuItem {
+  return {
+    key,
+    icon,
+    children,
+    label,
+    type,
+  } as MenuItem;
+}
+
+
 
 export const FilterSidebar = () => {
-    const { savedFilters, activeFilter, setActiveFilter, deleteSavedFilter, setSearchQuery } = useTaskStore();
-    const [isOpen, setIsOpen] = useState(true);
+    const { savedFilters, activeFilter, setActiveFilter, deleteSavedFilter, setSearchQuery, epics } = useTaskStore();
 
-    const handleLoadFilter = (filter: SavedFilter) => {
-        setActiveFilter(filter.criteria);
-        setSearchQuery(filter.criteria.search || "");
+    // Transform store data into Menu Items
+    const items: MenuItem[] = [
+        getItem('All Tasks', 'all', <Filter className="w-4 h-4" />),
+        
+        { type: 'divider' },
+
+        getItem('Epics', 'epics-group', <Layers className="w-4 h-4" />, 
+            epics.length > 0 ? epics.map(epic => 
+                getItem(
+                    <div className="flex justify-between items-center group w-full pr-2">
+                         <div className="flex items-center gap-2 overflow-hidden">
+                             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: epic.color }} />
+                             <span className="truncate">{epic.title}</span>
+                         </div>
+                         <Dropdown
+                            menu={{
+                                items: [
+                                    {
+                                        key: 'delete',
+                                        label: 'Delete',
+                                        icon: <Trash2 className="w-3 h-3" />,
+                                        danger: true,
+                                        onClick: (e) => {
+                                            e.domEvent.stopPropagation();
+                                            Modal.confirm({
+                                                title: 'Delete Epic?',
+                                                content: `Delete "${epic.title}"? Tasks will be preserved but unlinked.`,
+                                                okType: 'danger',
+                                                onOk: () => {
+                                                    // Stop propagation handled by Modal, but let's be safe
+                                                    useTaskStore.getState().deleteEpic(epic.id);
+                                                }
+                                            });
+                                        }
+                                    }
+                                ]
+                            }}
+                            trigger={['click']}
+                         >
+                             <Button 
+                                type="text" 
+                                size="small" 
+                                className="opacity-0 group-hover:opacity-100 p-0 h-6 w-6 flex items-center justify-center text-muted-foreground"
+                                onClick={(e) => e.stopPropagation()}
+                                icon={<MoreVertical className="w-3 h-3" />}
+                             />
+                         </Dropdown>
+                    </div>, 
+                    `epic-${epic.id}`
+                )
+            ) : [getItem(<span className="text-muted-foreground italic text-xs">No Epics</span>, 'no-epics', null, undefined, 'group')]
+        ),
+
+        { type: 'divider' },
+
+        getItem('Saved Filters', 'saved-group', <LayoutDashboard className="w-4 h-4" />, 
+             savedFilters.length > 0 ? savedFilters.map(filter => 
+                getItem(
+                    <div className="flex justify-between items-center group w-full">
+                        <span className="truncate">{filter.name}</span>
+                        <Button 
+                            type="text" 
+                            size="small" 
+                            className="opacity-0 group-hover:opacity-100 p-0 h-auto text-muted-foreground hover:text-red-500"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                Modal.confirm({
+                                    title: 'Delete Filter?',
+                                    content: `Are you sure you want to delete "${filter.name}"?`,
+                                    onOk: () => deleteSavedFilter(filter.id)
+                                });
+                            }}
+                            icon={<Trash2 className="w-3 h-3" />}
+                        />
+                    </div>,
+                    `filter-${filter.id}`
+                )
+            ) : [getItem(<span className="text-muted-foreground italic text-xs">No Saved Filters</span>, 'no-saved', null, undefined, 'group')]
+        ),
+    ];
+
+    const onClick: MenuProps['onClick'] = (e) => {
+        if (e.key === 'all') {
+            setActiveFilter({});
+        } else if (e.key.startsWith('epic-')) {
+            const epicId = e.key.replace('epic-', '');
+            // Multi-select logic for Epics
+            const currentEpics = activeFilter.epics || [];
+            const newEpics = currentEpics.includes(epicId)
+                ? currentEpics.filter(id => id !== epicId)
+                : [...currentEpics, epicId];
+            
+            setActiveFilter({
+                ...activeFilter,
+                epics: newEpics.length > 0 ? newEpics : undefined
+            });
+        } else if (e.key.startsWith('filter-')) {
+            const filterId = e.key.replace('filter-', '');
+            const filter = savedFilters.find(f => f.id === filterId);
+            if (filter) {
+                // When selecting a generic filter, preserve currently selected Epics 
+                // unless the filter itself explicitly limits Epics.
+                const newFilter = { ...filter.criteria };
+                if (!newFilter.epics || newFilter.epics.length === 0) {
+                    newFilter.epics = activeFilter.epics;
+                }
+                
+                setActiveFilter(newFilter);
+                setSearchQuery(filter.criteria.search || "");
+            }
+        }
+    };
+
+    // Determine selected keys based on active state
+    const getSelectedKeys = () => {
+        const keys: string[] = [];
+        if (Object.keys(activeFilter).length === 0) keys.push('all');
+        
+        if (activeFilter.epics) {
+            activeFilter.epics.forEach(id => keys.push(`epic-${id}`));
+        }
+        
+        const activeSaved = savedFilters.find(f => JSON.stringify(f.criteria) === JSON.stringify(activeFilter));
+        if (activeSaved) keys.push(`filter-${activeSaved.id}`);
+
+        return keys;
     };
 
     return (
-        <div 
-            className={cn(
-                "h-full border-r border-border bg-card/50 flex flex-col transition-all duration-300 relative",
-                isOpen ? "w-64" : "w-16"
-            )}
-        >
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="absolute -right-3 top-6 bg-card border border-border rounded-full p-1 hover:bg-muted transition-colors shadow-sm z-10"
-            >
-                {isOpen ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </button>
-
-            <div className="p-4 flex items-center gap-3 border-b border-border/50">
-                <LayoutDashboard className="w-5 h-5 text-primary" />
-                {isOpen && <h2 className="font-semibold text-sm">Datasets</h2>}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                 {/* All Tasks (Reset) */}
-                 <button
-                    onClick={() => setActiveFilter({})}
-                    className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                         Object.keys(activeFilter).length === 0 
-                            ? "bg-primary/10 text-primary font-medium" 
-                            : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    <Filter className="w-4 h-4" />
-                    {isOpen && <span>All Tasks</span>}
-                </button>
-                
-                {isOpen && <div className="px-3 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saved Filters</div>}
-
-                {savedFilters.map(filter => {
-                    // Check if this filter is roughly active (simplified check)
-                    const isActive = JSON.stringify(activeFilter) === JSON.stringify(filter.criteria);
-                    
-                    return (
-                        <div key={filter.id} className="group relative">
-                            <button
-                                onClick={() => handleLoadFilter(filter)}
-                                className={cn(
-                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left",
-                                    isActive
-                                        ? "bg-primary/10 text-primary font-medium" 
-                                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                <div className="w-4 h-4 flex items-center justify-center">
-                                    <span className="w-2 h-2 rounded-full bg-current opacity-70" />
-                                </div>
-                                {isOpen && <span className="truncate">{filter.name}</span>}
-                            </button>
-                            {isOpen && (
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Delete filter?")) deleteSavedFilter(filter.id);
-                                    }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </button>
-                            )}
-                        </div>
-                    );
-                })}
-
-                {savedFilters.length === 0 && isOpen && (
-                    <div className="p-4 text-xs text-muted-foreground text-center italic border border-dashed border-border rounded-lg mx-2">
-                        No saved filters. <br/>Use the top bar to save one.
-                    </div>
-                )}
-            </div>
-        </div>
+        <Menu
+            mode="inline"
+            selectedKeys={getSelectedKeys()}
+            defaultOpenKeys={['epics-group', 'saved-group']}
+            style={{ height: '100%', borderRight: 0, background: 'transparent' }}
+            items={items}
+            onClick={onClick}
+        />
     );
 };

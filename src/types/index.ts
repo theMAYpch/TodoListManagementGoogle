@@ -8,6 +8,15 @@ export type SubTask = {
   completed: boolean;
 };
 
+export type Epic = {
+  id: string;
+  title: string;
+  color: string;
+  startDate?: string;
+  dueDate?: string;
+  status: 'active' | 'completed' | 'on-hold';
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -21,12 +30,14 @@ export type Task = {
   url?: string;
   color?: string; // hex or tailwind class
   subtasks: SubTask[];
+  epicId?: string; // Link to Epic
   createdAt: number;
 };
 
 export type Column = {
   id: TaskStatus;
   title: string;
+  description?: string;
 };
 
 export type FilterCriteria = {
@@ -35,6 +46,7 @@ export type FilterCriteria = {
   statuses?: TaskStatus[];
   sprints?: string[];
   assignees?: string[];
+  epics?: string[]; // Filter by Epic
 };
 
 export type SavedFilter = {
@@ -43,17 +55,19 @@ export type SavedFilter = {
   criteria: FilterCriteria;
 };
 
-export type WidgetType = "bar" | "pie" | "line" | "stats";
+export type WidgetType = "stats" | "line" | "gauge" | "overdue";
 
 export type DashboardWidget = {
   id: string;
   type: WidgetType;
   title: string;
-  filterId: string; // References a SavedFilter
+  filterId?: string; // References a SavedFilter
+  epicId?: string;   // References an Epic
 };
 
 export type TaskStore = {
   tasks: Task[];
+  epics: Epic[];
   columns: Column[];
   
   // Selection
@@ -76,12 +90,21 @@ export type TaskStore = {
   addWidget: (widget: DashboardWidget) => void;
   removeWidget: (id: string) => void;
 
+  // Actions
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateTasks: (ids: string[], updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
-  deleteTasks: (ids: string[]) => void; // Batch delete
+  deleteTasks: (ids: string[]) => void;
   moveTask: (id: string, status: TaskStatus) => void;
   reorderTasks: (tasks: Task[]) => void;
-  importTasks: (tasks: Task[]) => void;
+  importTasks: (tasks: Task[], newEpics?: Epic[]) => void;
+  
+  // Epic Actions
+  addEpic: (epic: Epic) => void;
+  updateEpic: (id: string, updates: Partial<Epic>) => void;
+  deleteEpic: (id: string) => void;
+  
+  // Initialization
+  fetchData: () => Promise<void>;
 };

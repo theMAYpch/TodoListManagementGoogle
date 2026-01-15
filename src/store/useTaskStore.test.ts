@@ -11,6 +11,7 @@ describe('useTaskStore', () => {
       activeFilter: {},
       widgets: [],
       savedFilters: [],
+      epics: [], // Initialize epics
     });
   });
 
@@ -92,5 +93,27 @@ describe('useTaskStore', () => {
     
     useTaskStore.getState().moveTask('1', 'review');
     expect(useTaskStore.getState().tasks[0].status).toBe('review');
+  });
+
+  it('should manage epics', () => {
+    const epic = { id: 'epic-1', title: 'New Epic', color: '#000000', status: 'active' } as any;
+    
+    // Add Epic
+    useTaskStore.getState().addEpic(epic);
+    expect(useTaskStore.getState().epics).toHaveLength(1);
+    expect(useTaskStore.getState().epics[0].title).toBe('New Epic');
+    
+    // Update Epic
+    useTaskStore.getState().updateEpic('epic-1', { title: 'Updated Epic' });
+    expect(useTaskStore.getState().epics[0].title).toBe('Updated Epic');
+    
+    // Delete Epic and verify task unlink
+    const task = { id: 't1', title: 'Task', epicId: 'epic-1' } as any;
+    useTaskStore.getState().addTask(task);
+    expect(useTaskStore.getState().tasks[0].epicId).toBe('epic-1');
+    
+    useTaskStore.getState().deleteEpic('epic-1');
+    expect(useTaskStore.getState().epics).toHaveLength(0);
+    expect(useTaskStore.getState().tasks[0].epicId).toBeUndefined();
   });
 });

@@ -1,16 +1,19 @@
 import type { Task, TaskCategory } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 
-export const parseImportText = (text: string): Task[] => {
+export const parseImportText = (text: string, existingEpics: { id: string, title: string }[] = []): { tasks: Task[], newEpics: any[] } => {
   const lines = text.split('\n').filter(l => l.trim() !== '');
   const tasks: Task[] = [];
+  const newEpics: any[] = [];
   
   let currentSprint = "";
   let currentDate = "";
+  let currentEpicId: string | undefined = undefined;
   let lastTask: Task | null = null;
   
   // Regex patterns
   const sprintRegex = /^(sprint\s+\d+|sprint:\s*\d+)/i;
+  const epicRegex = /^epic:\s*(.+)/i;
   const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
   const checkboxRegex = /^\[([ xX])\]\s*(.*)/;
   
@@ -21,6 +24,35 @@ export const parseImportText = (text: string): Task[] => {
     const sprintMatch = trimmed.match(sprintRegex);
     if (sprintMatch) {
       currentSprint = trimmed.replace(':', '').trim();
+      return;
+    }
+
+    // Check for Epic header
+    const epicMatch = trimmed.match(epicRegex);
+    if (epicMatch) {
+      const epicTitle = epicMatch[1].trim();
+      
+      // Check if epic already exists
+      const existingEpic = existingEpics.find(e => e.title.toLowerCase() === epicTitle.toLowerCase());
+      if (existingEpic) {
+        currentEpicId = existingEpic.id;
+      } else {
+        // Check if we already created a new epic for this session
+        const alreadyNewEpic = newEpics.find(e => e.title.toLowerCase() === epicTitle.toLowerCase());
+        if (alreadyNewEpic) {
+          currentEpicId = alreadyNewEpic.id;
+        } else {
+          // Create new epic
+          const newEpic = {
+            id: uuidv4(),
+            title: epicTitle,
+            color: '#3b82f6',
+            status: 'active'
+          };
+          newEpics.push(newEpic);
+          currentEpicId = newEpic.id;
+        }
+      }
       return;
     }
 
@@ -68,6 +100,7 @@ export const parseImportText = (text: string): Task[] => {
           dueDate: currentDate,
           assignees: [],
           subtasks: [],
+          epicId: currentEpicId,
           createdAt: Date.now(),
         };
         
@@ -77,5 +110,5 @@ export const parseImportText = (text: string): Task[] => {
     }
   });
   
-  return tasks;
+  return { tasks, newEpics };
 };

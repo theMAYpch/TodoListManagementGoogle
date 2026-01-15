@@ -13,7 +13,7 @@ describe('parseImportText', () => {
 - Implement login feature
 - Fix background bug`;
     
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     
     expect(tasks).toHaveLength(2);
     
@@ -41,7 +41,7 @@ describe('parseImportText', () => {
   - Subtask 1
   - Subtask 2`;
     
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     
     expect(tasks).toHaveLength(1);
     expect(tasks[0].title).toBe('Main task');
@@ -55,7 +55,7 @@ describe('parseImportText', () => {
 - [x] Completed task
   - [x] Completed subtask`;
     
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     
     expect(tasks[0].status).toBe('todo');
     expect(tasks[1].status).toBe('done');
@@ -66,7 +66,7 @@ describe('parseImportText', () => {
     const text = `- Update documentation
 - Weekly sync meeting`;
     
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     
     expect(tasks[0].category).toBe('Doc');
     expect(tasks[1].category).toBe('Meeting');
@@ -74,7 +74,7 @@ describe('parseImportText', () => {
 
   it('should use default values for missing headers', () => {
     const text = `- Just a task`;
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     
     expect(tasks[0].sprint).toBe('Backlog');
     expect(tasks[0].startDate).toBe('');
@@ -83,7 +83,7 @@ describe('parseImportText', () => {
   it('should normalize sprint names correctly', () => {
     const text = `sprint: 42
 - Task in sprint 42`;
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     expect(tasks[0].sprint).toBe('sprint 42');
   });
 
@@ -92,7 +92,7 @@ describe('parseImportText', () => {
 - Task 1
 11/01/2026
 - Task 2`;
-    const tasks = parseImportText(text);
+    const { tasks } = parseImportText(text);
     expect(tasks[0].startDate).toBe('2026-01-10');
     expect(tasks[1].startDate).toBe('2026-01-11');
   });

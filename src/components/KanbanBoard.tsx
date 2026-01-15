@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
+import { Modal, theme } from "antd";
 import { useTaskStore } from "../store/useTaskStore";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
@@ -41,6 +42,7 @@ export const KanbanBoard = ({ onEditTask, onAddTask }: KanbanBoardProps) => {
     } = useTaskStore();
     
     const [activeTask, setActiveTask] = useState<Task | null>(null);
+    const { token } = theme.useToken();
 
     // Filter tasks based on search and active filters
     const filteredTasks = tasks.filter(task => {
@@ -73,6 +75,11 @@ export const KanbanBoard = ({ onEditTask, onAddTask }: KanbanBoardProps) => {
                 activeFilter.assignees?.includes(assignee)
             );
             if (!hasMatchingAssignee) return false;
+        }
+        
+        // 6. Epics
+         if (activeFilter.epics && activeFilter.epics.length > 0) {
+            if (!task.epicId || !activeFilter.epics.includes(task.epicId)) return false;
         }
 
         return true;
@@ -197,9 +204,12 @@ export const KanbanBoard = ({ onEditTask, onAddTask }: KanbanBoardProps) => {
 
             {/* Floating Selection Bar */}
             {hasSelection && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background px-6 py-3 rounded-full shadow-xl flex items-center gap-6 animate-in slide-in-from-bottom-5 duration-300 z-50">
+                <div 
+                    className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-xl flex items-center gap-6 animate-in slide-in-from-bottom-5 duration-300 z-[100]"
+                    style={{ backgroundColor: token.colorText, color: token.colorBgContainer }}
+                >
                     <span className="font-semibold whitespace-nowrap">{selectedTaskIds.length} Selected</span>
-                    <div className="h-4 w-[1px] bg-background/20" />
+                    <div className="h-4 w-[1px] bg-current opacity-20" />
                     
                     {/* Select All */}
                     <button 
@@ -211,22 +221,22 @@ export const KanbanBoard = ({ onEditTask, onAddTask }: KanbanBoardProps) => {
                                 selectAll(allVisibleIds);
                             }
                         }}
-                        className="text-xs font-medium hover:text-background/70 transition-colors whitespace-nowrap"
+                        className="text-xs font-medium hover:opacity-70 transition-opacity whitespace-nowrap"
                     >
                         {selectedTaskIds.length === filteredTasks.length ? "Deselect All" : "Select All"}
                     </button>
 
-                    <div className="h-4 w-[1px] bg-background/20" />
+                    <div className="h-4 w-[1px] bg-current opacity-20" />
                     
                     {/* Batch Move */}
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-background/60 font-medium uppercase tracking-wide">Move to:</span>
-                        <div className="flex bg-background/10 rounded-lg p-1 gap-1">
+                        <span className="text-xs opacity-60 font-medium uppercase tracking-wide">Move to:</span>
+                        <div className="flex gap-1">
                             {columns.map(col => (
                                 <button
                                     key={col.id}
                                     onClick={() => updateTasks(selectedTaskIds, { status: col.id })}
-                                    className="px-2 py-1 text-xs font-medium rounded hover:bg-background/20 transition-colors"
+                                    className="px-2 py-1 text-xs font-medium rounded hover:bg-white/20 transition-colors border border-white/10"
                                 >
                                     {col.title}
                                 </button>
@@ -234,13 +244,16 @@ export const KanbanBoard = ({ onEditTask, onAddTask }: KanbanBoardProps) => {
                         </div>
                     </div>
 
-                    <div className="h-4 w-[1px] bg-background/20" />
+                    <div className="h-4 w-[1px] bg-current opacity-20" />
                     
                     <button 
                         onClick={() => {
-                            if (confirm(`Delete ${selectedTaskIds.length} tasks?`)) {
-                                deleteTasks(selectedTaskIds);
-                            }
+                            Modal.confirm({
+                                title: `Delete ${selectedTaskIds.length} tasks?`,
+                                content: 'This action cannot be undone.',
+                                okType: 'danger',
+                                onOk: () => deleteTasks(selectedTaskIds)
+                            });
                         }}
                         className="flex items-center gap-2 hover:text-red-400 transition-colors whitespace-nowrap"
                     >
