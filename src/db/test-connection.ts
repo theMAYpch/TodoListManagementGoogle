@@ -2,7 +2,7 @@
 import { neon, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 neonConfig.webSocketConstructor = ws;
-import { v4 as uuidv4 } from 'uuid';
+
 
 // Environment variables are loaded via --env-file=.env
 

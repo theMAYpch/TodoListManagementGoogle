@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, BarChart3, PieChart, TrendingUp } from "lucide-react";
+import { Plus, PieChart, TrendingUp } from "lucide-react";
 import { useTaskStore } from "../store/useTaskStore";
 import { WidgetCard } from "./WidgetCard";
 import { calculateWidgetStats } from "../utils/widgetUtils";

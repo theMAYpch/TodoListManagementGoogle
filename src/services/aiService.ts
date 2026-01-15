@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useTaskStore } from "../store/useTaskStore";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { v4 as uuidv4 } from "uuid";
@@ -136,7 +136,7 @@ export const chatWithAI = async (message: string, history: any[]) => {
   ];
 
   // Helper to try generation with fallback
-  const attemptChat = async (modelIndex = 0, history: any[], retries = 1): Promise<any> => {
+  const attemptChat = async (modelIndex = 0, history: any[]): Promise<any> => {
       const modelName = modelsToTry[modelIndex];
       // If we ran out of models, throw the last error or a generic one
       if (!modelName) throw new Error("All AI models are currently overloaded or unavailable. Please try again later.");

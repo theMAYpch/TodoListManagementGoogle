@@ -10,7 +10,7 @@ const INITIAL_COLUMNS: Column[] = [
   { id: "done", title: "Done" },
 ];
 
-export const useTaskStore = create<TaskStore>((set, get) => ({
+export const useTaskStore = create<TaskStore>((set) => ({
   tasks: [],
   epics: [],
   savedFilters: [],

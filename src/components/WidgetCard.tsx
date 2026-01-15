@@ -20,7 +20,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {
     
-    // Pie Chart (Category Breakdown)
+    // Pie Chart Option (Used for Stats Card internal chart)
     const pieChartOption = {
         tooltip: {
             trigger: 'item',
@@ -63,55 +63,7 @@ export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {
         ]
     };
 
-    // Bar Chart (Category Distribution)
-    const barChartOption = {
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' }
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'category',
-            data: stats.categoryBreakdown.map(c => c.category),
-            axisLabel: { color: '#888' }
-        },
-        yAxis: {
-            type: 'value',
-            axisLabel: { color: '#888' }
-        },
-        series: [
-            {
-                name: 'Total',
-                type: 'bar',
-                data: stats.categoryBreakdown.map(c => ({
-                    value: c.total,
-                    itemStyle: {
-                        color: CATEGORY_COLORS[c.category] || CATEGORY_COLORS.Other
-                    }
-                })),
-                barWidth: '60%'
-            },
-            {
-                name: 'Completed',
-                type: 'bar',
-                data: stats.categoryBreakdown.map(c => ({
-                    value: c.completed,
-                    itemStyle: {
-                        color: CATEGORY_COLORS[c.category] || CATEGORY_COLORS.Other,
-                        opacity: 0.6
-                    }
-                })),
-                barWidth: '60%'
-            }
-        ]
-    };
-
-    // Line Chart (Trend - simplified, showing completion percentage)
+    // Line Chart (Trend)
     const lineChartOption = {
         tooltip: {
             trigger: 'axis'
@@ -162,7 +114,7 @@ export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {
         ]
     };
 
-    // 4. Gauge Chart (Project Completion)
+    // Gauge Chart
     const gaugeChartOption = {
         series: [{
             type: 'gauge',
@@ -179,65 +131,10 @@ export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {
         }]
     };
 
-    // 5. Burndown Chart (Line)
-    const burndownOption = {
-        tooltip: { trigger: 'axis' },
-        legend: { data: ['Ideal', 'Actual'] },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: stats.burndown?.map(b => b.date), boundaryGap: false },
-        yAxis: { type: 'value' },
-        series: [
-            { name: 'Ideal', type: 'line', data: stats.burndown?.map(b => b.ideal), lineStyle: { type: 'dashed', color: '#ccc' }, showSymbol: false },
-            { name: 'Actual', type: 'line', data: stats.burndown?.map(b => b.actual), lineStyle: { color: '#3b82f6', width: 3 }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(59, 130, 246, 0.3)' }, { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }] } } }
-        ]
-    };
-
-    // 6. Cycle Time (Histogram)
-    const cycleTimeOption = {
-        tooltip: { trigger: 'axis' },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', name: 'Days', data: stats.cycleTime?.distribution.map(d => d.days + 'd') },
-        yAxis: { type: 'value', name: 'Tasks' },
-        series: [{ data: stats.cycleTime?.distribution.map(d => d.count), type: 'bar', itemStyle: { color: '#8b5cf6' } }]
-    };
-
-    // 7. Bottleneck Analysis (Stacked Bar)
-    const bottleneckOption = {
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        xAxis: { type: 'value' },
-        yAxis: { type: 'category', data: ['Status Count'] },
-        grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-        series: stats.bottlenecks?.map(b => ({
-            name: b.status.toUpperCase(),
-            type: 'bar',
-            stack: 'total',
-            label: { show: true },
-            emphasis: { focus: 'series' },
-            data: [b.count]
-        }))
-    };
-
-    // 8. Donut Chart (Allocation)
-    const donutOption = {
-        ...pieChartOption,
-        series: [{
-            ...pieChartOption.series[0],
-            radius: ['50%', '70%'],
-            label: { show: false, position: 'center' },
-            emphasis: { label: { show: true, fontSize: 20, fontWeight: 'bold' } }
-        }]
-    };
-
     const renderChart = () => {
         switch (widget.type) {
-            case 'bar': return <ReactECharts option={barChartOption} style={{ height: '250px' }} />;
             case 'line': return <ReactECharts option={lineChartOption} style={{ height: '250px' }} />;
-            case 'pie': return <ReactECharts option={pieChartOption} style={{ height: '250px' }} />;
             case 'gauge': return <ReactECharts option={gaugeChartOption} style={{ height: '300px' }} />;
-            case 'burndown': return <ReactECharts option={burndownOption} style={{ height: '300px' }} />;
-            case 'cycletime': return <ReactECharts option={cycleTimeOption} style={{ height: '250px' }} />;
-            case 'bottleneck': return <ReactECharts option={bottleneckOption} style={{ height: '200px' }} />;
-            case 'donut': return <ReactECharts option={donutOption} style={{ height: '250px' }} />;
             case 'overdue': return (
                 <div className="h-[250px] overflow-y-auto pr-2">
                     {stats.overdueTasks?.length === 0 ? (
@@ -290,14 +187,8 @@ export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {
                     <h3 className="font-semibold text-lg">{widget.title}</h3>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">
                         {widget.type === 'stats' && 'Stats Overview'}
-                        {widget.type === 'bar' && 'Bar Chart'}
                         {widget.type === 'line' && 'Trend Analysis'}
-                        {widget.type === 'pie' && 'Pie Chart'}
                         {widget.type === 'gauge' && 'Completion Gauge'}
-                        {widget.type === 'burndown' && 'Burndown Chart'}
-                        {widget.type === 'cycletime' && 'Cycle Time'}
-                        {widget.type === 'bottleneck' && 'Bottlenecks'}
-                        {widget.type === 'donut' && 'Task Allocation'}
                         {widget.type === 'overdue' && 'Overdue Tasks'}
                     </p>
                 </div>

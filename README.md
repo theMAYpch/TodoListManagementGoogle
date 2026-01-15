@@ -8,6 +8,7 @@ KanbanPro เป็นแอปพลิเคชันจัดการงา�
     *   **Text-to-Action**: สร้าง (Create), แก้ไข (Edit), หรือย้าย (Move) งานได้ง่ายๆ ผ่านการพิมพ์แชท
     *   **Data Analysis**: สอบถามข้อมูลสรุป, หางานที่เกินกำหนด (Overdue), หรือวิเคราะห์ภาพรวมโปรเจกต์
     *   **Board Control**: สั่งสร้าง Widget สำหรับแสดงผลข้อมูลเฉพาะด้านได้ทันที
+*   **☁️ Cloud Database**: รองรับการจัดเก็บข้อมูลบน Neon Serverless Postgres เพื่อความรวดเร็วและรองรับการขยายตัว
 *   **🏔️ Epic Management**: จัดกาลำดับชั้นของงานแบบ Epic เพื่อแบ่งหมวดหมู่โปรเจกต์ขนาดใหญ่
 *   **📋 Kanban Board**: ระบบลากและวาง (Drag-and-drop) เพื่อจัดการสถานะของงานได้อย่างอิสระ
 *   **📊 Dashboard & Analytics**: แดชบอร์ดสรุปภาพรวมของงาน พร้อมกราฟเชิงวิเคราะห์จาก ECharts
@@ -21,6 +22,7 @@ KanbanPro เป็นแอปพลิเคชันจัดการงา�
 
 *   **Core**: [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/)
 *   **UI Framework**: [Ant Design](https://ant.design/)
+*   **Database**: [Neon](https://neon.tech/) (Serverless Postgres)
 *   **AI**: [Google Generative AI SDK](https://www.npmjs.com/package/@google/generative-ai) (Gemini Models)
 *   **State Management**: [Zustand](https://zustand-demo.pmnd.rs/)
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
@@ -68,7 +70,8 @@ npm run test:coverage
 การตั้งค่า Environment Variables:
 สร้างไฟล์ `.env` ที่ root ของโปรเจกต์และเพิ่มค่าดังนี้:
 ```env
-VITE_GOOGLE_AI_API_KEY=your_api_key_here
+VITE_GOOGLE_AI_API_KEY=your_gemini_api_key
+VITE_DATABASE_URL=postgresql://user:password@endpoint.neon.tech/dbname?sslmode=require
 ```
 
 ติดตั้ง Dependencies:
