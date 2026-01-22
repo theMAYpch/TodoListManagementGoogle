@@ -17,7 +17,7 @@ type TaskModalProps = {
   initialStatus?: TaskStatus;
 };
 
-const CATEGORIES: TaskCategory[] = ["Feature", "Bug", "Doc", "Meeting", "Other"];
+const CATEGORIES: TaskCategory[] = ["Planning", "Documentation", "Support", "Meetings", "Management", "Others"];
 
 export const TaskModal = ({ isOpen, onClose, taskToEdit, initialStatus }: TaskModalProps) => {
   const { addTask, updateTask, deleteTask, epics, addEpic } = useTaskStore();
@@ -45,7 +45,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialStatus }: TaskMo
         form.resetFields();
         form.setFieldsValue({
           status: initialStatus || "todo",
-          category: "Feature",
+          category: "Planning",
           sprint: `Sprint ${now.year()}-${now.month() + 1}`,
           subtasks: [],
           assignees: [], // Initialize as empty array for Select mode="tags"

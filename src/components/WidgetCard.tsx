@@ -11,11 +11,12 @@ type WidgetCardProps = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-    Feature: "#3b82f6",
-    Bug: "#ef4444",
-    Doc: "#eab308",
-    Meeting: "#a855f7",
-    Other: "#6b7280",
+    Planning: "#3b82f6",     // Blue
+    Documentation: "#a855f7", // Purple
+    Support: "#ef4444",      // Red
+    Meetings: "#f59e0b",     // Amber
+    Management: "#22c55e",   // Green (swapped for variety)
+    Others: "#6b7280",       // Gray
 };
 
 export const WidgetCard = ({ widget, stats, onRemove }: WidgetCardProps) => {

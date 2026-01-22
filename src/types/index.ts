@@ -1,6 +1,6 @@
 export type TaskStatus = "todo" | "doing" | "done" | "review";
 
-export type TaskCategory = "Feature" | "Bug" | "Doc" | "Meeting" | "Other";
+export type TaskCategory = "Planning" | "Documentation" | "Support" | "Meetings" | "Management" | "Others";
 
 export type SubTask = {
   id: string;

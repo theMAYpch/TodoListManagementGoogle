@@ -38,7 +38,7 @@ const tools: any = [
             title: { type: "STRING" },
             description: { type: "STRING" },
             status: { type: "STRING", description: "todo,doing,review,done" },
-            category: { type: "STRING", description: "Feature,Bug,Doc,Meeting,Other" },
+            category: { type: "STRING", description: "Strategy,Discovery,Delivery,Meeting,Management,Other" },
             epicId: { type: "STRING" },
             dueDate: { type: "STRING", description: "YYYY-MM-DD" },
             startDate: { type: "STRING", description: "YYYY-MM-DD" }
@@ -67,7 +67,7 @@ const tools: any = [
             taskId: { type: "STRING" },
             title: { type: "STRING" },
             description: { type: "STRING" },
-            category: { type: "STRING", description: "Feature,Bug,Doc,Meeting,Other" },
+            category: { type: "STRING", description: "Strategy,Discovery,Delivery,Meeting,Management,Other" },
             dueDate: { type: "STRING", description: "YYYY-MM-DD" },
             startDate: { type: "STRING", description: "YYYY-MM-DD" },
             status: { type: "STRING", description: "todo,doing,review,done" }
@@ -214,7 +214,7 @@ When asked for a summary, provide a professional "Stakeholder Update" format:
                 title: args.title,
                 description: args.description || "",
                 status: args.status,
-                category: args.category || "Feature",
+                category: args.category || "Strategy",
                 sprint: "Backlog",
                 dueDate: args.dueDate || new Date().toISOString().split('T')[0],
                 startDate: args.startDate,
